@@ -15,6 +15,7 @@
   "dependencies": {
     "@capacitor/android": "^1.1.1",
     "@capacitor/cli": "^1.1.1",
-    "@capacitor/core": "^1.1.1"
+    "@capacitor/core": "^1.1.1",
+    "cordova-plugin-background-download": "github:sgrebnov/cordova-plugin-background-download"
   }
 }
