@@ -3,7 +3,7 @@ window.customElements.define('capacitor-welcome', class extends HTMLElement {
     super();
 
     Capacitor.Plugins.SplashScreen.hide();
-    
+
     const root = this.attachShadow({ mode: 'open' });
 
     root.innerHTML = `
@@ -56,29 +56,9 @@ window.customElements.define('capacitor-welcome', class extends HTMLElement {
       </capacitor-welcome-titlebar>
       <main>
         <p>
-          Capacitor makes it easy to build powerful apps for the app stores, mobile web (Progressive Web Apps), and desktop, all
-          with a single code base.
+          <button class="button" id="download">Start/resume download</button>
         </p>
-        <h2>Getting Started</h2>
-        <p>
-          You'll probably need a UI framework to build a full-featured app. Might we recommend
-          <a target="_blank" href="http://ionicframework.com/">Ionic</a>?
-        </p>
-        <p>
-          Visit <a href="http://ionic-team.github.io/capacitor">ionic-team.github.io/capacitor</a> for information
-          on using native features, building plugins, and more.
-        </p>
-        <a href="http://ionic-team.github.io/capacitor" target="_blank" class="button">Read more</a>
-        <h2>Tiny Demo</h2>
-        <p>
-          This demo shows how to call Capacitor plugins. Say cheese!
-        </p>
-        <p>
-          <button class="button" id="take-photo">Take Photo</button>
-        </p>
-        <p>
-          <img id="image" style="max-width: 100%">
-        </p>
+        <p id="progress"><p>
       </main>
     </div>
     `
@@ -87,24 +67,8 @@ window.customElements.define('capacitor-welcome', class extends HTMLElement {
   connectedCallback() {
     const self = this;
 
-    self.shadowRoot.querySelector('#take-photo').addEventListener('click', async function(e) {
-      const { Camera } = Capacitor.Plugins;
-
-      try {
-        const photo = await Camera.getPhoto({
-          resultType: "uri"
-        });
-
-        const image = self.shadowRoot.querySelector('#image');
-        if (!image) {
-          return;
-        }
-        
-        image.src = photo.webPath;
-      } catch (e) {
-        console.warn('User cancelled', e);
-      }
-    })
+    const progressLabel = self.shadowRoot.querySelector('#progress')
+    self.shadowRoot.querySelector('#download').addEventListener('click', () => startAsyncDownload(progressLabel))
   }
 });
 
@@ -133,3 +97,36 @@ window.customElements.define('capacitor-welcome-titlebar', class extends HTMLEle
     `;
   }
 });
+
+async function startAsyncDownload(lblProgress) {
+  const { Filesystem } = Capacitor.Plugins
+
+  const complete = () => {
+    lblProgress.innerHTML = 'Done';
+  };
+  const error = err => {
+    console.log('Download failed: ' + err);
+    lblProgress.innerHTML = 'Error: ' + err;
+  };
+  const progress = progress => {
+    lblProgress.innerHTML = (100 * progress.bytesReceived / progress.totalBytesToReceive).toFixed(2) + '%';
+  };
+
+  try {
+    const fileName = 'file_example_MP4_1920.mp4'
+    const downloadUrl = 'https://file-examples.com/wp-content/uploads/2017/04/file_example_MP4_1920_18MG.mp4'
+
+    const { uri: filePath } = await Filesystem.getUri({ directory: 'DATA', path: fileName })
+    const targetFile = wrapTargetFile(filePath)
+
+    const downloader = new BackgroundTransfer.BackgroundDownloader();
+    // Create a new download operation.
+    const download = downloader.createDownload(downloadUrl, targetFile);
+    // Start the download and persist the promise to be able to cancel the download.
+    download.startAsync().then(complete, error, progress);
+  } catch (err) {
+    console.log('Error: ' + err);
+  }
+}
+
+const wrapTargetFile = filePath => ({ toURL: () => filePath })
